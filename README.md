@@ -1,8 +1,8 @@
-# Digital Content Verification Platform
+# AI-based-content-Authenticity-and-Verification-Platform
 
 **A platform to verify, trace, and authenticate digital content in the age of AI.**
 
-Digital Content Verification Platform provides a transparent and secure system to verify, trace, and authenticate original digital content. By combining (test) watermarking, decentralized storage (IPFS), and blockchain immutability, it empowers creators to prove originality and helps audiences trust digital media.
+AI-based-content-Authenticity-and-Verification-Platform provides a transparent and secure system to verify, trace, and authenticate original digital content. By combining (test) watermarking, decentralized storage (IPFS), and blockchain immutability, it empowers creators to prove originality and helps audiences trust digital media.
 
 ## 💡 The Problem
 

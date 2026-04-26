@@ -347,7 +347,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     if (imageFile) {
       // 2. Apply watermark in-place only for images
-      const watermarkText = `Content Verification - ${new Date().toISOString()}`;
+      const watermarkText = `AI-based-content-Authenticity-and-Verification-Platform - ${new Date().toISOString()}`;
       try {
         await applyVisibleWatermark(filePath, watermarkText);
         watermarkApplied = true;
@@ -490,7 +490,7 @@ app.post('/api/verify', upload.single('file'), async (req, res) => {
 
 // Simple health check route
 app.get('/api', (req, res) => {
-  res.json({ message: 'Digital Content Verification API is running!' });
+  res.json({ message: 'AI-based-content-Authenticity-and-Verification-Platform API is running!' });
 });
 app.get('/api/health', async (req, res) => {
   const runtime = await getRuntimeHealth();
@@ -538,7 +538,7 @@ app.use((err, req, res, next) => {
 
 // --- Server Startup ---
 app.listen(PORT, () => {
-  console.log(`🚀 Digital Content Verification server listening on port ${PORT}`);
+  console.log(`🚀 AI-based-content-Authenticity-and-Verification-Platform server listening on port ${PORT}`);
   void (async () => {
     const runtime = await getRuntimeHealth();
     if (runtime.rpcReachable && runtime.contractCodePresent && runtime.contractReadOk) {
