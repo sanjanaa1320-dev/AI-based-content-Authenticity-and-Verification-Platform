@@ -1,0 +1,195 @@
+﻿Diagnose log at 2026-04-26T04:40:22Z
+
+AppPath: F:\Git\mingw64\bin\git-credential-manager.exe
+InstallDir: F:\Git\mingw64\bin\
+Version: 2.6.1+786ab03440ddc82e807a97c0e540f5247e44cec6
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Windows
+OSVersion: 10.0 (build 26200)
+Reading environment variables... OK
+ Variables:
+HOMEPATH=\Users\Sagar Suhas
+DriverData=C:\Windows\System32\Drivers\DriverData
+COMPUTERNAME=SAGARBS
+EFC_4692_2283032206=1
+GIT_TRACE2_PARENT_SID=c972210e-2470-4b07-8921-0ed80767ab45
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+OneDrive=C:\Users\Sagar Suhas\OneDrive
+CODEX_THREAD_ID=019dc815-0b75-7332-acaa-ad5c55733a17
+RegionCode=APJ
+GIT_CONFIG_KEY_0=safe.directory
+NVIDIAWHITELISTED=0x01
+TMP=C:\Users\SAGARS~1\AppData\Local\Temp
+LC_CTYPE=C.UTF-8
+USERDOMAIN=SAGARBS
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL
+VSCODE_IPC_HOOK=\\.\pipe\2a57bf73-1.113.0-main-sock
+SystemDrive=C:
+GIT_EXEC_PATH=F:/Git/mingw64/libexec/git-core
+TEMP=C:\Users\SAGARS~1\AppData\Local\Temp
+LOCALAPPDATA=C:\Users\Sagar Suhas\AppData\Local
+MSYSTEM=MINGW64
+TERM=xterm-256color
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 126 Stepping 5, GenuineIntel
+EFC_4692_3789132940=1
+ProgramData=C:\ProgramData
+VSCODE_ESM_ENTRYPOINT=vs/workbench/api/node/extensionHostProcess
+EFC_4692_2775293581=1
+LESS=
+platformcode=KV
+PROCESSOR_REVISION=7e05
+windir=C:\WINDOWS
+GIT_CONFIG_VALUE_0=C:\Users\Sagar Suhas\Downloads\AI based content Authenticity and Verification Platform
+PROCESSOR_LEVEL=6
+NUMBER_OF_PROCESSORS=8
+PATH=F:/Git/mingw64/libexec/git-core;F:\Git\mingw64\bin;F:\Git\usr\bin;C:\Users\Sagar Suhas\bin;C:\Users\Sagar Suhas\.codex\tmp\arg0\codex-arg0XQGE9A;C:\Users\Sagar Suhas\AppData\Local\Programs\Microsoft VS Code;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\ProgramData\Oracle\Java\javapath;C:\windows\system32;C:\windows;C:\windows\System32\Wbem;C:\windows\System32\WindowsPowerShell\v1.0\;C:\windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\120\Tools\Binn\;C:\Program Files\HP\HP One Agent;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\xampp\php;F:\Git\cmd;C:\Program Files\Java\jdk-21\bin;C:\Program Files\apache-maven-3.9.11\bin;C:\Program Files (x86)\Java\jdk1.8.0_202\bin;C:\Program Files\nodejs\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Program Files (x86)\Java\jdk1.8.0_202\bin;C:\Users\Sagar Suhas\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Sagar Suhas\AppData\Roaming\npm;C:\Users\Sagar Suhas\AppData\Local\Python\bin;C:\Users\Sagar Suhas\AppData\Local\Programs\cursor\resources\app\bin;c:\Users\Sagar Suhas\.vscode\extensions\openai.chatgpt-26.422.30944-win32-x64\bin\windows-x86_64
+VSCODE_CODE_CACHE_PATH=C:\Users\Sagar Suhas\AppData\Roaming\Code\CachedData\cfbea10c5ffb233ea9177d34726e6056e89913dc
+GIT_CONFIG_COUNT=1
+ZES_ENABLE_SYSMAN=1
+ProgramFiles(x86)=C:\Program Files (x86)
+PUBLIC=C:\Users\Public
+VSCODE_NLS_CONFIG={"userLocale":"en-us","osLocale":"en-in","resolvedLanguage":"en","defaultMessagesFile":"C:\\Users\\Sagar Suhas\\AppData\\Local\\Programs\\Microsoft VS Code\\cfbea10c5f\\resources\\app\\out\\nls.messages.json","locale":"en-us","availableLanguages":{}}
+SESSIONNAME=Console
+CommonProgramFiles=C:\Program Files (x86)\Common Files
+USERDOMAIN_ROAMINGPROFILE=SAGARBS
+VSCODE_CRASH_REPORTER_PROCESS_TYPE=extensionHost
+CHROME_CRASHPAD_PIPE_NAME=\\.\pipe\crashpad_2580_VDLZYNESIHNJHPYS
+CODEX_SANDBOX_NETWORK_DISABLED=1
+PLINK_PROTOCOL=ssh
+COLORTERM=truecolor
+ProgramFiles=C:\Program Files (x86)
+GIT_PAGER=more.com
+ChocolateyInstall=C:\ProgramData\chocolatey
+DEBUG=release
+OnlineServices=Online Services
+TMPDIR=C:\Users\SAGARS~1\AppData\Local\Temp
+ProgramW6432=C:\Program Files
+HOME=C:\Users\Sagar Suhas
+VSCODE_HANDLES_UNCAUGHT_ERRORS=true
+CODEX_INTERNAL_ORIGINATOR_OVERRIDE=codex_vscode
+CommonProgramW6432=C:\Program Files\Common Files
+APPLICATION_INSIGHTS_NO_STATSBEAT=true
+LOGONSERVER=\\SAGARBS
+VSCODE_CWD=C:\Users\Sagar Suhas\AppData\Local\Programs\Microsoft VS Code
+USERPROFILE=C:\Users\Sagar Suhas
+SystemRoot=C:\WINDOWS
+VBOX_MSI_INSTALL_PATH=C:\Program Files\Oracle\VirtualBox\
+MEmu_Path=C:\Program Files (x86)
+EFC_4692_1262719628=1
+APPDATA=C:\Users\Sagar Suhas\AppData\Roaming
+HOMEDRIVE=C:
+RUST_LOG=warn
+VSCODE_PID=2580
+SHIM_MCCOMPAT=0x810000001
+EFC_4692_1592913036=1
+PSModulePath=C:\Users\Sagar Suhas\Documents\WindowsPowerShell\Modules;C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules
+ELECTRON_RUN_AS_NODE=1
+USERNAME=Sagar Suhas
+PROCESSOR_ARCHITEW6432=AMD64
+PROCESSOR_ARCHITECTURE=x86
+OS=Windows_NT
+ComSpec=C:\WINDOWS\system32\cmd.exe
+ChocolateyLastPathUpdate=133794910332573260
+PAGER=more.com
+PT8HOME=C:\Program Files\Cisco Packet Tracer 8.2.2
+ALLUSERSPROFILE=C:\ProgramData
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is 'C:\Users\SAGARS~1\AppData\Local\Temp\'...
+Checking basic file I/O...
+Writing to temporary file 'C:\Users\SAGARS~1\AppData\Local\Temp\a29c4787a47b274697af3fa1'... OK
+Reading from temporary file 'C:\Users\SAGARS~1\AppData\Local\Temp\a29c4787a47b274697af3fa1'... OK
+Deleting temporary file 'C:\Users\SAGARS~1\AppData\Local\Temp\a29c4787a47b274697af3fa1'... OK
+Testing IFileSystem instance...
+UserHomePath: C:\Users\CodexSandboxOffline
+UserDataDirectoryPath: C:\Users\CodexSandboxOffline\.gcm
+GetCurrentDirectory(): C:\Users\Sagar Suhas\Downloads\AI based content Authenticity and Verification Platform
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: False
+Exception:
+System.Net.Http.HttpRequestException: An error occurred while sending the request. ---> System.Net.WebException: Unable to connect to the remote server ---> System.Net.Sockets.SocketException: An attempt was made to access a socket in a way forbidden by its access permissions 172.66.147.243:443
+   at System.Net.Sockets.Socket.InternalEndConnect(IAsyncResult asyncResult)
+   at System.Net.Sockets.Socket.EndConnect(IAsyncResult asyncResult)
+   at System.Net.ServicePoint.ConnectSocketInternal(Boolean connectFailure, Socket s4, Socket s6, Socket& socket, IPAddress& address, ConnectSocketState state, IAsyncResult asyncResult, Exception& exception)
+   --- End of inner exception stack trace ---
+   at System.Net.HttpWebRequest.EndGetResponse(IAsyncResult asyncResult)
+   at System.Net.Http.HttpClientHandler.GetResponseCallback(IAsyncResult ar)
+   --- End of inner exception stack trace ---
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   at GitCredentialManager.Diagnostics.NetworkingDiagnostic.<RunInternalAsync>d__4.MoveNext()
+--- End of stack trace from previous location where exception was thrown ---
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   at GitCredentialManager.Diagnostics.Diagnostic.<RunAsync>d__6.MoveNext()
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com...Sending HEAD request to https://example.com... warning: HEAD request failed
+Sending HEAD request to http://httpforever.com...
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.51.0.windows.1'
+Locating current repository...Git repository at 'C:/Users/Sagar Suhas/Downloads/AI based content Authenticity and Verification Platform/.git'
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:F:/Git/etc/gitconfig	diff.astextplain.textconv=astextplain
+file:F:/Git/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:F:/Git/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:F:/Git/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:F:/Git/etc/gitconfig	filter.lfs.required=true
+file:F:/Git/etc/gitconfig	http.sslbackend=schannel
+file:F:/Git/etc/gitconfig	core.autocrlf=true
+file:F:/Git/etc/gitconfig	core.fscache=true
+file:F:/Git/etc/gitconfig	core.symlinks=true
+file:F:/Git/etc/gitconfig	pull.rebase=false
+file:F:/Git/etc/gitconfig	credential.helper=manager
+file:F:/Git/etc/gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:F:/Git/etc/gitconfig	init.defaultbranch=master
+file:C:/Users/Sagar Suhas/.gitconfig	user.name=sagar
+file:C:/Users/Sagar Suhas/.gitconfig	user.email=sagarvkone8@gmail.com
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=false
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	core.ignorecase=true
+file:.git/config	remote.recent.url=https://github.com/sanjanaa1320-dev/AI-based-content-Authenticity-and-Verification-Platform.git
+file:.git/config	remote.recent.fetch=+refs/heads/*:refs/remotes/recent/*
+command line:	safe.directory=C:\Users\Sagar Suhas\Downloads\AI based content Authenticity and Verification Platform
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
