@@ -22,8 +22,8 @@ if (pinataJwtToken) {
 } else if (pinataApiKey && pinataApiSecret) {
   pinata = new pinataSDK(pinataApiKey, pinataApiSecret);
 } else {
-  throw new Error(
-    'Missing Pinata credentials. Set PINATA_JWT_TOKEN or both PINATA_API_KEY and PINATA_API_SECRET in backend/.env.'
+  console.warn(
+    'Pinata credentials are missing. The server will start, but upload/register requires PINATA_JWT_TOKEN or both PINATA_API_KEY and PINATA_API_SECRET in backend/.env.'
   );
 }
 
@@ -276,6 +276,8 @@ const upload = multer({
 });
 
 const getPinnedFilenameByCid = async (cid) => {
+  if (!pinata) return null;
+
   const result = await pinata.pinList({ hashContains: cid, status: 'pinned', pageLimit: 10 });
   const exactMatch = (result.rows || []).find((row) => row.ipfs_pin_hash === cid);
   return exactMatch?.metadata?.name || null;
@@ -374,6 +376,10 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       console.log(`Hashes complete: SHA-256 (original): ${sha256Hash}, pHash (watermarked): ${pHash}`);
     } else {
       console.log(`Non-image file detected (${originalFilename}). Skipping watermark/pHash.`);
+    }
+
+    if (!pinata) {
+      throw new Error('Missing Pinata credentials. Set PINATA_JWT_TOKEN or both PINATA_API_KEY and PINATA_API_SECRET in backend/.env.');
     }
 
     console.log('Pinning to IPFS...');

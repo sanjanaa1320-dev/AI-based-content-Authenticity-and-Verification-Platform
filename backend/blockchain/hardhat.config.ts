@@ -1,4 +1,4 @@
-import { HardhatUserConfig } from "hardhat/config";
+import { defineConfig } from "hardhat/config";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -49,12 +49,17 @@ const accountsConfig = hasPrivateKey
     }
   : undefined;
 
-const config: HardhatUserConfig = {
-  solidity: "0.8.24",
+const config = defineConfig({
   networks: {
+    localhost: {
+      type: "http",
+      chainType: "l1",
+      url: "http://127.0.0.1:8545/",
+    },
     ...(hasSepoliaUrl && {
       sepolia: {
         type: "http",
+        chainType: "l1",
         url: SEPOLIA_RPC_URL,
         ...(accountsConfig ? { accounts: accountsConfig } : {}),
       },
@@ -62,14 +67,29 @@ const config: HardhatUserConfig = {
     ...(hasAmoyUrl && {
       amoy: {
         type: "http",
+        chainType: "l1",
         url: ALCHEMY_AMOY_URL,
         ...(accountsConfig ? { accounts: accountsConfig } : {}),
       },
     }),
   },
-  // 2. Add the imported plugin to the plugins array.
-  // This is the step that was missing.
+  solidity: {
+    profiles: {
+      default: {
+        version: "0.8.24",
+      },
+      production: {
+        version: "0.8.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    },
+  },
   plugins: [hardhatToolboxMochaEthers],
-};
+});
 
 export default config;
