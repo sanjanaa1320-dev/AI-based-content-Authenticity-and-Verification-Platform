@@ -223,7 +223,7 @@ function App() {
 
       <header className="hero">
         <p className="eyebrow">AI-based-content-Authenticity-and-Verification-Platform</p>
-        <h1>Secure Provenance For Modern Digital Assets</h1>
+        <h1>AI based content Authenticity and Verification Platform</h1>
         <p className="hero-copy">
           Register and verify images, video, audio, and documents with SHA-256 fingerprints, IPFS permanence, and on-chain proof.
         </p>
