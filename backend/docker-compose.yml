@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - CORS_ORIGIN=http://localhost:5173
+      - RPC_URL=http://hardhat:8545
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - PINATA_JWT_TOKEN=${PINATA_JWT_TOKEN}
+      - WATERMARK_STRICT=false
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    depends_on:
+      - hardhat
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  hardhat:
+    build: ./blockchain
+    ports:
+      - '8545:8545'
+    working_dir: /app
+    command: npx hardhat node
+    volumes:
+      - ./blockchain:/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  frontend:
+    build: ../frontend
+    ports:
+      - '5173:5173'
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  uploads:
+  logs:

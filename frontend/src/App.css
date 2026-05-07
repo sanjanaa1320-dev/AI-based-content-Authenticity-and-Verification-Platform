@@ -172,6 +172,31 @@ body {
   color: var(--muted);
 }
 
+.ai-checks {
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 204, 113, 0.28);
+  background: rgba(3, 25, 36, 0.56);
+  padding: 12px;
+}
+
+.ai-checks h3 {
+  margin: 0 0 7px;
+  color: #dfffea;
+  font-size: 0.98rem;
+}
+
+.ai-checks p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.ai-checks strong {
+  color: #eef8ff;
+}
+
 .input-group {
   margin-top: 18px;
 }
@@ -324,6 +349,90 @@ button:disabled {
 .inline-note {
   color: var(--muted);
   margin: 4px 0 10px;
+}
+
+.ai-analysis {
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 204, 113, 0.32);
+  background: rgba(3, 25, 36, 0.72);
+  padding: 12px;
+}
+
+.ai-analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+  color: #dfffea;
+}
+
+.ai-analysis-head strong {
+  color: var(--success);
+}
+
+.ai-meter {
+  height: 8px;
+  overflow: hidden;
+  margin: 9px 0;
+  border-radius: 999px;
+  background: rgba(169, 200, 239, 0.18);
+}
+
+.ai-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2ecc71, #8bd6ff);
+}
+
+.ai-analysis p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.ai-result-grid {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(169, 200, 239, 0.18);
+  font-size: 0.86rem;
+}
+
+.ai-result-grid span {
+  color: var(--muted);
+}
+
+.ai-result-grid strong {
+  min-width: 0;
+  color: #eef8ff;
+  overflow-wrap: anywhere;
+}
+
+.ai-analysis .ai-signal-summary {
+  margin-top: 6px;
+  color: #dfffea;
+}
+
+.ai-analysis h4 {
+  margin: 10px 0 0;
+  color: #dfffea;
+  font-size: 0.9rem;
+}
+
+.ai-analysis ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #eef8ff;
+  font-size: 0.84rem;
+}
+
+.ai-analysis li + li {
+  margin-top: 4px;
 }
 
 .record-details pre {

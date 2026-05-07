@@ -5,69 +5,103 @@ import path from 'path';
 import fs from 'fs';
 import 'dotenv/config';
 import pinataSDK from '@pinata/sdk';
-import { applyVisibleWatermark, calculateSHA256, calculatePHash } from './src/hashUtils.js';
-
-// --- ETHERS IMPORTS ---
 import { ethers } from 'ethers';
+
+// Import our new modules
+import { logger } from './src/logger.js';
+import { config, validateEnvironment } from './src/config.js';
+import { ApiError, DuplicateFileError, BlockchainError, IpfsError } from './src/errors.js';
+import {
+  detectFileCategory,
+  isAllowedFile,
+  validateFileSize,
+  validateHash,
+  sanitizeFilename,
+} from './src/validators.js';
+import {
+  errorHandler,
+  requestLogger,
+  securityHeaders,
+  createRateLimiter,
+} from './src/middleware.js';
+
+// Import existing utilities
+import { applyVisibleWatermark, calculateSHA256, calculatePHash } from './src/hashUtils.js';
+import { AI_AUTHENTICITY_MODEL_NAME, analyzeContentAuthenticity } from './src/aiAuthenticity.js';
 import abi from './src/GenesisRegistry.json' with { type: 'json' };
 
-// --- Pinata Setup ---
-const pinataJwtToken = process.env.PINATA_JWT_TOKEN;
-const pinataApiKey = process.env.PINATA_API_KEY;
-const pinataApiSecret = process.env.PINATA_API_SECRET;
-
-let pinata;
-if (pinataJwtToken) {
-  pinata = new pinataSDK({ pinataJWTKey: pinataJwtToken });
-} else if (pinataApiKey && pinataApiSecret) {
-  pinata = new pinataSDK(pinataApiKey, pinataApiSecret);
-} else {
-  console.warn(
-    'Pinata credentials are missing. The server will start, but upload/register requires PINATA_JWT_TOKEN or both PINATA_API_KEY and PINATA_API_SECRET in backend/.env.'
-  );
+// Validate environment on startup
+const envValidation = validateEnvironment();
+if (!envValidation.isValid) {
+  logger.error('Environment validation failed', {
+    missing: envValidation.missing,
+    warnings: envValidation.warnings,
+  });
+  throw new Error(`Missing required environment variables: ${envValidation.missing.join(', ')}`);
 }
 
-// --- ETHERS CONTRACT SETUP ---
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:8545/';
-const rawPrivateKey = (process.env.PRIVATE_KEY || '').trim();
-const PRIVATE_KEY = rawPrivateKey
-  ? (rawPrivateKey.startsWith('0x') ? rawPrivateKey : `0x${rawPrivateKey}`)
-  : '';
+if (envValidation.warnings.length > 0) {
+  envValidation.warnings.forEach((warning) => logger.warn(warning));
+}
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const isLocalRpc = /127\.0\.0\.1|localhost/.test(RPC_URL);
+// Initialize Pinata
+let pinata;
+if (config.pinataJwtToken) {
+  pinata = new pinataSDK({ pinataJWTKey: config.pinataJwtToken });
+} else if (config.pinataApiKey && config.pinataApiSecret) {
+  pinata = new pinataSDK(config.pinataApiKey, config.pinataApiSecret);
+} else {
+  logger.warn('Pinata credentials missing - IPFS uploads will fail');
+}
+
+// Initialize Ethereum provider and contract
+const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+const isLocalRpc = /127\.0\.0\.1|localhost/.test(config.rpcUrl);
 
 let signer;
-if (PRIVATE_KEY) {
-  signer = new ethers.Wallet(PRIVATE_KEY, provider);
+if (config.privateKey) {
+  signer = new ethers.Wallet(config.privateKey, provider);
 } else if (isLocalRpc) {
   signer = await provider.getSigner(0);
 } else {
-  throw new Error('Missing PRIVATE_KEY for non-local RPC_URL. Set PRIVATE_KEY in backend environment variables.');
+  throw new Error('Missing PRIVATE_KEY for non-local RPC_URL');
 }
 
-const genesisContract = new ethers.Contract(CONTRACT_ADDRESS, abi.abi, signer);
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-console.log(`✅ Connected to blockchain RPC ${RPC_URL}. Contract loaded at ${CONTRACT_ADDRESS}`);
+const genesisContract = new ethers.Contract(config.contractAddress, abi.abi, signer);
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-// --- Ensure uploads directory exists ---
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+logger.info('Connected to blockchain', {
+  rpcUrl: config.rpcUrl,
+  contractAddress: config.contractAddress,
+});
+
+// Ensure uploads directory exists
+const UPLOAD_DIR = path.join(process.cwd(), config.uploadDir);
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  console.log(`📁 Created uploads directory at: ${UPLOAD_DIR}`);
+  logger.info('Created uploads directory', { path: UPLOAD_DIR });
 }
 
-// --- Middleware ---
+// Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3001;
-const corsOrigin = (process.env.CORS_ORIGIN || '').trim();
 
+// Security and logging middleware
+app.use(securityHeaders);
+app.use(requestLogger);
+
+// Rate limiting
+const rateLimiter = createRateLimiter(60000, 100); // 100 requests per minute
+app.use('/api/', rateLimiter);
+
+// CORS configuration
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const normalizeOrigin = (value) => value.replace(/\/$/, '');
 
 const parseAllowedOrigins = (originCsv) => {
-  const entries = originCsv.split(',').map((entry) => normalizeOrigin(entry.trim())).filter(Boolean);
+  const entries = originCsv
+    .split(',')
+    .map((entry) => normalizeOrigin(entry.trim()))
+    .filter(Boolean);
   const exact = new Set();
   const patterns = [];
 
@@ -83,7 +117,7 @@ const parseAllowedOrigins = (originCsv) => {
   return { exact, patterns };
 };
 
-const configuredCors = corsOrigin ? parseAllowedOrigins(corsOrigin) : null;
+const configuredCors = config.corsOrigin ? parseAllowedOrigins(config.corsOrigin) : null;
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
@@ -94,135 +128,68 @@ const isOriginAllowed = (origin) => {
   return configuredCors.patterns.some((pattern) => pattern.test(normalized));
 };
 
-app.use(cors({
-  origin: (origin, cb) => {
-    if (isOriginAllowed(origin)) {
-      return cb(null, true);
-    }
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (isOriginAllowed(origin)) {
+        return cb(null, true);
+      }
+      return cb(new ApiError(403, `CORS blocked for origin: ${origin}`));
+    },
+    optionsSuccessStatus: 200,
+  })
+);
 
-    return cb(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  optionsSuccessStatus: 200,
-}));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// --- Multer Configuration ---
+// Multer configuration
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: (req, file, cb) => {
     cb(null, UPLOAD_DIR);
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+  filename: (req, file, cb) => {
+    const sanitized = sanitizeFilename(file.originalname);
+    cb(null, `${Date.now()}-${sanitized}`);
+  },
 });
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif', '.tif', '.tiff']);
-const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v']);
-const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac']);
-const DOCUMENT_EXTENSIONS = new Set(['.pdf', '.csv', '.txt', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']);
-const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
-const WATERMARK_STRICT = process.env.WATERMARK_STRICT === 'true';
 
-const extractErrorMessage = (error) => {
-  const candidates = [
-    typeof error?.shortMessage === 'string' ? error.shortMessage : '',
-    typeof error?.stderr === 'string' ? error.stderr : '',
-    typeof error?.reason === 'string' ? error.reason : '',
-    typeof error?.message === 'string' ? error.message : '',
-  ];
+const upload = multer({
+  storage,
+  limits: { fileSize: config.maxFileSize },
+  fileFilter: (req, file, cb) => {
+    try {
+      if (!isAllowedFile(file)) {
+        return cb(
+          new ApiError(
+            400,
+            'Unsupported file type. Allowed: images, MP4/video, MP3/audio, PDF, CSV, TXT, DOC/DOCX, XLS/XLSX, PPT/PPTX.'
+          )
+        );
+      }
+      cb(null, true);
+    } catch (error) {
+      cb(error);
+    }
+  },
+});
 
-  return candidates.map((value) => value.trim()).find(Boolean) || 'Unknown error';
-};
-
-const classifyProcessingError = (error) => {
-  const rawMessage = extractErrorMessage(error);
-  const causeMessage = extractErrorMessage(error?.cause || {});
-  const combinedMessage = `${rawMessage} ${causeMessage}`.toLowerCase();
-
-  if (error?.code === 'CALL_EXCEPTION') {
-    return {
-      status: 409,
-      error: 'File already registered on-chain.',
-      hint: 'Try Verify for this file instead of Register.',
-      isDuplicate: true,
-    };
-  }
-
-  if (combinedMessage.includes('insufficient funds')) {
-    return {
-      status: 500,
-      error: 'Blockchain transaction failed due to insufficient gas funds.',
-      hint: 'Fund the PRIVATE_KEY wallet on your selected network and retry.',
-    };
-  }
-
-  if (
-    combinedMessage.includes('failed to detect network') ||
-    combinedMessage.includes('econnrefused') ||
-    combinedMessage.includes('enotfound') ||
-    combinedMessage.includes('network error')
-  ) {
-    return {
-      status: 500,
-      error: 'Could not connect to blockchain RPC.',
-      hint: 'Check RPC_URL and network status in Render environment variables.',
-    };
-  }
-
-  if (
-    combinedMessage.includes('could not decode result data') ||
-    combinedMessage.includes('missing revert data') ||
-    combinedMessage.includes('bad data')
-  ) {
-    return {
-      status: 500,
-      error: 'Contract call failed.',
-      hint: 'Check CONTRACT_ADDRESS and ABI/network match.',
-    };
-  }
-
-  if (combinedMessage.includes('pinata')) {
-    return {
-      status: 500,
-      error: 'IPFS pinning failed.',
-      hint: 'Check PINATA_JWT_TOKEN or PINATA_API_KEY/PINATA_API_SECRET in Render.',
-    };
-  }
-
-  if (
-    combinedMessage.includes('watermark') ||
-    combinedMessage.includes('jimp') ||
-    combinedMessage.includes('font')
-  ) {
-    return {
-      status: 500,
-      error: 'Server watermark dependency failed.',
-      hint: 'Set WATERMARK_STRICT=false to skip watermarking, or verify Jimp font assets are available.',
-    };
-  }
-
-  return {
-    status: 500,
-    error: 'Error processing file.',
-    hint: rawMessage,
-  };
-};
-
-const getRuntimeHealth = async () => {
-  const runtime = {
-    rpcReachable: false,
-    contractCodePresent: false,
-    contractReadOk: false,
-    chainId: null,
-    blockNumber: null,
-  };
-
+// Health check endpoint
+app.get('/health', async (req, res) => {
   try {
+    const runtime = {
+      rpcReachable: false,
+      contractCodePresent: false,
+      contractReadOk: false,
+      chainId: null,
+      blockNumber: null,
+    };
+
     const network = await provider.getNetwork();
-    runtime.chainId = network?.chainId?.toString?.() || null;
+    runtime.chainId = network?.chainId?.toString() || null;
     runtime.blockNumber = await provider.getBlockNumber();
     runtime.rpcReachable = true;
 
-    const contractCode = await provider.getCode(CONTRACT_ADDRESS);
+    const contractCode = await provider.getCode(config.contractAddress);
     runtime.contractCodePresent = Boolean(contractCode && contractCode !== '0x');
 
     if (runtime.contractCodePresent) {
@@ -231,92 +198,76 @@ const getRuntimeHealth = async () => {
         runtime.contractReadOk = true;
       } catch (readError) {
         runtime.contractReadOk = false;
-        runtime.contractReadError = extractErrorMessage(readError);
+        runtime.contractReadError = readError.message;
       }
     } else {
-      runtime.contractReadError = 'No contract bytecode at CONTRACT_ADDRESS for the configured RPC network.';
+      runtime.contractReadError =
+        'No contract bytecode at CONTRACT_ADDRESS for the configured RPC network.';
     }
+
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.1',
+      environment: config.nodeEnv,
+      runtime,
+    });
   } catch (error) {
-    runtime.rpcError = extractErrorMessage(error);
+    logger.error('Health check failed', { error: error.message });
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+    });
   }
-
-  return runtime;
-};
-
-const detectFileCategory = (file) => {
-  const mimetype = (file.mimetype || '').toLowerCase();
-  const ext = path.extname(file.originalname || '').toLowerCase();
-
-  if (mimetype.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) return 'image';
-  if (mimetype.startsWith('video/') || VIDEO_EXTENSIONS.has(ext)) return 'video';
-  if (mimetype.startsWith('audio/') || AUDIO_EXTENSIONS.has(ext)) return 'audio';
-  if (DOCUMENT_EXTENSIONS.has(ext)) return 'file';
-  return 'file';
-};
-
-const isAllowedFile = (file) => {
-  const mimetype = (file.mimetype || '').toLowerCase();
-  const ext = path.extname(file.originalname || '').toLowerCase();
-  if (mimetype.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) return true;
-  if (mimetype.startsWith('video/') || VIDEO_EXTENSIONS.has(ext)) return true;
-  if (mimetype.startsWith('audio/') || AUDIO_EXTENSIONS.has(ext)) return true;
-  if (DOCUMENT_EXTENSIONS.has(ext)) return true;
-  return false;
-};
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: MAX_FILE_SIZE_BYTES },
-  fileFilter: (req, file, cb) => {
-    if (!isAllowedFile(file)) {
-      return cb(new Error('Unsupported file type. Allowed: images, MP4/video, MP3/audio, PDF, CSV, TXT, DOC/DOCX, XLS/XLSX, PPT/PPTX.'));
-    }
-    cb(null, true);
-  },
 });
 
-const getPinnedFilenameByCid = async (cid) => {
-  if (!pinata) return null;
-
-  const result = await pinata.pinList({ hashContains: cid, status: 'pinned', pageLimit: 10 });
-  const exactMatch = (result.rows || []).find((row) => row.ipfs_pin_hash === cid);
-  return exactMatch?.metadata?.name || null;
-};
-
-// --- API Endpoints ---
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded.' });
-  }
-
-  const filePath = req.file.path;
-  const originalFilename = req.file.originalname;
-  const fileCategory = detectFileCategory(req.file);
-  const imageFile = fileCategory === 'image';
-  
+// Upload endpoint
+app.post('/api/upload', upload.single('file'), async (req, res, next) => {
   try {
-    // 1. Calculate SHA-256 on the ORIGINAL file bytes (before watermarking)
-    const sha256Hash = await calculateSHA256(filePath);
-    console.log(`Original file hash (SHA-256): ${sha256Hash}`);
+    if (!req.file) {
+      throw new ApiError(400, 'No file uploaded');
+    }
 
-    // Prevent duplicate on-chain registration before doing expensive work.
+    const file = req.file;
+    const originalFilename = sanitizeFilename(file.originalname);
+    const fileCategory = detectFileCategory(file);
+    const isImage = fileCategory === 'image';
+
+    logger.info('Processing file upload', {
+      filename: originalFilename,
+      size: file.size,
+      category: fileCategory,
+    });
+
+    // Validate file
+    validateFileSize(file);
+
+    // Calculate SHA-256 hash
+    const sha256Hash = await calculateSHA256(file.path);
+    logger.info('SHA-256 calculated', { hash: sha256Hash });
+
+    // Check for existing record
     const existingRecord = await genesisContract.getRecord(sha256Hash);
     if (existingRecord.creator !== ZERO_ADDRESS) {
       const existingFilename = await getPinnedFilenameByCid(existingRecord.ipfsCid);
       const sameFilename =
-        typeof existingFilename === 'string' &&
+        existingFilename &&
         existingFilename.trim().toLowerCase() === originalFilename.trim().toLowerCase();
 
       if (sameFilename) {
+        logger.info('Duplicate file detected', { hash: sha256Hash });
         return res.json({
-          message: 'File already registered (same SHA-256 and filename). Returning existing record.',
+          message:
+            'File already registered (same SHA-256 and filename). Returning existing record.',
           alreadyRegistered: true,
           filename: originalFilename,
-          isImage: fileCategory === 'image',
-          fileCategory: fileCategory,
-          mimetype: req.file.mimetype || 'application/octet-stream',
+          isImage,
+          fileCategory,
+          mimetype: file.mimetype || 'application/octet-stream',
           sha256: existingRecord.sha256Hash,
           pHash: existingRecord.pHash,
+          aiAnalysis: await analyzeContentAuthenticity(file.path, originalFilename),
           ipfsCid: existingRecord.ipfsCid,
           record: {
             creator: existingRecord.creator,
@@ -325,226 +276,211 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         });
       }
 
-      return res.status(409).json({
-        error: 'SHA-256 already registered with a different filename. Duplicate content cannot be re-registered.',
-        isDuplicate: true,
-        existingFilename,
-        incomingFilename: originalFilename,
-        record: {
-          sha256: existingRecord.sha256Hash,
-          pHash: existingRecord.pHash,
-          ipfsCid: existingRecord.ipfsCid,
-          creator: existingRecord.creator,
-          timestamp: existingRecord.timestamp.toString(),
-        },
-      });
+      throw new DuplicateFileError(
+        'SHA-256 already registered with a different filename. Duplicate content cannot be re-registered.',
+        {
+          existingFilename,
+          incomingFilename: originalFilename,
+          record: {
+            sha256: existingRecord.sha256Hash,
+            pHash: existingRecord.pHash,
+            ipfsCid: existingRecord.ipfsCid,
+            creator: existingRecord.creator,
+            timestamp: existingRecord.timestamp.toString(),
+          },
+        }
+      );
     }
+
+    // AI analysis
+    const aiAnalysis = await analyzeContentAuthenticity(file.path, originalFilename);
+    logger.info('AI analysis complete', {
+      verdict: aiAnalysis.verdict,
+      confidence: aiAnalysis.aiConfidence,
+    });
 
     let pHash = 'not_applicable';
     let watermarkApplied = false;
     let watermarkWarning = null;
     let pHashWarning = null;
 
-    if (imageFile) {
-      // 2. Apply watermark in-place only for images
-      const watermarkText = `AI-based-content-Authenticity-and-Verification-Platform - ${new Date().toISOString()}`;
+    // Apply watermark for images
+    if (isImage) {
       try {
-        await applyVisibleWatermark(filePath, watermarkText);
+        const watermarkText = `AI-based-content-Authenticity-and-Verification-Platform - ${new Date().toISOString()}`;
+        await applyVisibleWatermark(file.path, watermarkText);
         watermarkApplied = true;
-        console.log(`Watermarking complete for ${originalFilename} using Node/Jimp`);
+        logger.info('Watermark applied successfully');
       } catch (watermarkError) {
-        if (WATERMARK_STRICT) {
-          throw watermarkError;
+        if (config.watermarkStrict) {
+          throw new ApiError(
+            500,
+            'Watermark processing failed',
+            'Set WATERMARK_STRICT=false to skip watermarking'
+          );
         }
-
-        watermarkWarning = 'Watermark skipped due to a server watermark processing issue.';
-        console.warn(`Skipping watermark for ${originalFilename}: ${extractErrorMessage(watermarkError)}`);
+        watermarkWarning = 'Watermark skipped due to processing issue.';
+        logger.warn('Watermark skipped', { error: watermarkError.message });
       }
-      
-      // 3. Compute pHash on the final, watermarked image
+
+      // Calculate perceptual hash
       try {
-        pHash = await calculatePHash(filePath);
+        pHash = await calculatePHash(file.path);
+        logger.info('Perceptual hash calculated', { pHash });
       } catch (pHashError) {
-        if (WATERMARK_STRICT) {
-          throw pHashError;
+        if (config.watermarkStrict) {
+          throw new ApiError(500, 'Perceptual hash calculation failed');
         }
-
         pHash = 'not_available';
-        pHashWarning = 'Perceptual hash skipped due to an image processing issue.';
-        console.warn(`Skipping pHash for ${originalFilename}: ${extractErrorMessage(pHashError)}`);
+        pHashWarning = 'Perceptual hash skipped due to processing issue.';
+        logger.warn('Perceptual hash skipped', { error: pHashError.message });
       }
-      console.log(`Hashes complete: SHA-256 (original): ${sha256Hash}, pHash (watermarked): ${pHash}`);
-    } else {
-      console.log(`Non-image file detected (${originalFilename}). Skipping watermark/pHash.`);
     }
 
+    // Upload to IPFS
     if (!pinata) {
-      throw new Error('Missing Pinata credentials. Set PINATA_JWT_TOKEN or both PINATA_API_KEY and PINATA_API_SECRET in backend/.env.');
+      throw new IpfsError(
+        'IPFS service unavailable',
+        'Configure PINATA_JWT_TOKEN or PINATA_API_KEY/PINATA_API_SECRET'
+      );
     }
 
-    console.log('Pinning to IPFS...');
-    const stream = fs.createReadStream(filePath);
+    logger.info('Uploading to IPFS');
+    const stream = fs.createReadStream(file.path);
     const options = {
-      pinataMetadata: { name: originalFilename, keyvalues: { sha256: sha256Hash, pHash: pHash } },
+      pinataMetadata: {
+        name: originalFilename,
+        keyvalues: { sha256: sha256Hash, pHash },
+      },
     };
+
     const ipfsResult = await pinata.pinFileToIPFS(stream, options);
     const ipfsCid = ipfsResult.IpfsHash;
-    console.log(`IPFS Pin complete! CID: ${ipfsCid}`);
+    logger.info('IPFS upload complete', { cid: ipfsCid });
 
-    console.log("Registering record on blockchain...");
-    const tx = await genesisContract.createRecord(sha256Hash, pHash, ipfsCid);
+    // Register on blockchain
+    logger.info('Registering on blockchain');
+    const tx = await genesisContract.registerContent(sha256Hash, pHash, ipfsCid);
     const receipt = await tx.wait();
-    console.log(`✅ Record created! Transaction hash: ${receipt.hash}`);
+    logger.info('Blockchain registration complete', {
+      txHash: receipt.hash,
+      blockNumber: receipt.blockNumber,
+    });
 
     res.json({
-      message: imageFile
-        ? (watermarkApplied
-          ? 'Image watermarked, processed, pinned to IPFS, and registered on-chain.'
-          : 'Image processed, pinned to IPFS, and registered on-chain (watermark skipped).')
-        : 'File processed, pinned to IPFS, and registered on-chain.',
+      message: 'File registered successfully',
       filename: originalFilename,
-      isImage: imageFile,
-      watermarkApplied: imageFile ? watermarkApplied : false,
-      ...(watermarkWarning ? { watermarkWarning } : {}),
-      ...(pHashWarning ? { pHashWarning } : {}),
-      fileCategory: fileCategory,
-      mimetype: req.file.mimetype || 'application/octet-stream',
+      isImage,
+      fileCategory,
+      mimetype: file.mimetype || 'application/octet-stream',
       sha256: sha256Hash,
-      pHash: pHash,
-      ipfsCid: ipfsCid,
-      timestamp: ipfsResult.Timestamp
+      pHash,
+      aiAnalysis,
+      ipfsCid,
+      transaction: {
+        hash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString(),
+      },
+      record: {
+        creator: await signer.getAddress(),
+        timestamp: Math.floor(Date.now() / 1000),
+      },
+      warnings: {
+        watermark: watermarkWarning,
+        pHash: pHashWarning,
+      },
     });
-
   } catch (error) {
-    const classified = classifyProcessingError(error);
-    console.error('Error processing file:', extractErrorMessage(error));
-    return res.status(classified.status).json({
-      error: classified.error,
-      ...(classified.hint ? { hint: classified.hint } : {}),
-      ...(classified.isDuplicate ? { isDuplicate: true } : {}),
-    });
+    next(error);
   } finally {
-    fs.unlink(filePath, (err) => {
-      if (err) console.error("Error deleting temp file:", err);
-    });
+    // Clean up uploaded file
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) logger.warn('Failed to clean up temp file', { error: err.message });
+      });
+    }
   }
 });
 
-// --- UPDATED VERIFICATION ENDPOINT ---
-app.post('/api/verify', upload.single('file'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded for verification.' });
-  }
-  
-  const filePath = req.file.path;
-  
+// Verify endpoint
+app.post('/api/verify', async (req, res, next) => {
   try {
-    // 1. Calculate the SHA-256 hash of the uploaded file
-    const sha256Hash = await calculateSHA256(filePath);
-    console.log(`Verification check for SHA-256: ${sha256Hash}`);
+    const { hash } = req.body;
 
-    // 2. Call the 'getRecord' function from our smart contract
-    // This is a 'read' operation and doesn't cost any gas
-    const record = await genesisContract.getRecord(sha256Hash);
+    if (!hash) {
+      throw new ApiError(400, 'Hash parameter is required');
+    }
 
-    // 3. Check if the record exists
-    // The 'creator' field will be a non-zero address if it exists
-    const isAuthentic = record.creator !== ZERO_ADDRESS;
+    validateHash(hash);
 
-    if (isAuthentic) {
-      console.log("✅ VERIFIED: Record found on-chain.");
-      res.json({
-        message: 'File is authentic and verified on-chain.',
-        isAuthentic: true,
-        record: {
-          sha256: record.sha256Hash,
-          pHash: record.pHash,
-          ipfsCid: record.ipfsCid,
-          creator: record.creator,
-          // Convert BigInt to string for JSON serialization
-          timestamp: record.timestamp.toString(), 
-        }
-      });
-    } else {
-      console.log("❌ NOT VERIFIED: No record found for this hash.");
-      res.json({
-        message: 'File not found. This content has not been registered.',
-        isAuthentic: false,
-        sha256: sha256Hash,
+    logger.info('Verifying content', { hash });
+
+    const record = await genesisContract.getRecord(hash);
+
+    if (record.creator === ZERO_ADDRESS) {
+      return res.status(404).json({
+        verified: false,
+        message: 'Content not found in registry',
+        hash,
       });
     }
 
+    const filename = await getPinnedFilenameByCid(record.ipfsCid);
+
+    res.json({
+      verified: true,
+      message: 'Content verified successfully',
+      hash,
+      record: {
+        creator: record.creator,
+        timestamp: record.timestamp.toString(),
+        sha256Hash: record.sha256Hash,
+        pHash: record.pHash,
+        ipfsCid: record.ipfsCid,
+        filename,
+      },
+    });
   } catch (error) {
-    const classified = classifyProcessingError(error);
-    console.error('Error processing verification file:', extractErrorMessage(error));
-    res.status(classified.status).json({
-      error: 'Error processing verification file.',
-      ...(classified.hint ? { hint: classified.hint } : {}),
-    });
-  } finally {
-    fs.unlink(filePath, (err) => {
-      if (err) console.error("Error deleting temp file:", err);
-    });
+    next(error);
   }
 });
 
-// Simple health check route
-app.get('/api', (req, res) => {
-  res.json({ message: 'AI-based-content-Authenticity-and-Verification-Platform API is running!' });
-});
-app.get('/api/health', async (req, res) => {
-  const runtime = await getRuntimeHealth();
-  const status = runtime.rpcReachable && runtime.contractCodePresent && runtime.contractReadOk
-    ? 'ok'
-    : 'degraded';
+// Helper function to get filename by CID
+const getPinnedFilenameByCid = async (cid) => {
+  if (!pinata || !cid) return null;
 
-  res.status(status === 'ok' ? 200 : 503).json({
-    status,
-    config: {
-      rpcUrlConfigured: Boolean(RPC_URL),
-      contractAddressConfigured: Boolean(CONTRACT_ADDRESS),
-      privateKeyConfigured: Boolean(PRIVATE_KEY) || isLocalRpc,
-      pinataConfigured: Boolean(pinataJwtToken || (pinataApiKey && pinataApiSecret)),
-      corsConfigured: Boolean(corsOrigin),
-      corsOrigin: corsOrigin || null,
-      watermarkStrict: WATERMARK_STRICT,
-      watermarkEngine: 'node-jimp',
-    },
-    runtime,
+  try {
+    const result = await pinata.pinList({ hashContains: cid, status: 'pinned', pageLimit: 10 });
+    const exactMatch = result.rows?.find((row) => row.ipfs_pin_hash === cid);
+    return exactMatch?.metadata?.name || null;
+  } catch (error) {
+    logger.warn('Failed to get filename by CID', { cid, error: error.message });
+    return null;
+  }
+};
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+// Start server
+app.listen(config.port, () => {
+  logger.info('Server started', {
+    port: config.port,
+    environment: config.nodeEnv,
+    corsOrigin: config.corsOrigin,
   });
 });
 
-app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum allowed size is 100 MB.' });
-    }
-    return res.status(400).json({ error: `Upload error: ${err.message}` });
-  }
-
-  if (err && err.message && err.message.includes('Unsupported file type')) {
-    return res.status(400).json({ error: err.message });
-  }
-  
-  if (err && err.message && err.message.includes('CORS blocked for origin')) {
-    return res.status(403).json({
-      error: 'CORS blocked request origin.',
-      hint: 'Add your Vercel domain to CORS_ORIGIN (supports comma-separated values and wildcard like https://*.vercel.app).',
-    });
-  }
-
-  return next(err);
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  process.exit(0);
 });
 
-// --- Server Startup ---
-app.listen(PORT, () => {
-  console.log(`🚀 AI-based-content-Authenticity-and-Verification-Platform server listening on port ${PORT}`);
-  void (async () => {
-    const runtime = await getRuntimeHealth();
-    if (runtime.rpcReachable && runtime.contractCodePresent && runtime.contractReadOk) {
-      console.log(`✅ Runtime health check passed (chainId=${runtime.chainId}, block=${runtime.blockNumber}).`);
-      return;
-    }
-    console.warn('⚠️ Runtime health check degraded:', runtime);
-  })();
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  process.exit(0);
 });
+
+export default app;

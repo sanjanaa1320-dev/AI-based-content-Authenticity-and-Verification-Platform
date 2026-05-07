@@ -1,10 +1,11 @@
 # AI-based-content-Authenticity-and-Verification-Platform
 
-AI-based-content-Authenticity-and-Verification-Platform is a full-stack system for registering and verifying digital content provenance. It combines a React frontend, an Express API, SHA-256 hashing, optional visible image watermarking, IPFS pinning through Pinata, and an on-chain Solidity registry.
+AI-based-content-Authenticity-and-Verification-Platform is a full-stack system for registering and verifying digital content provenance. It combines a React frontend, an Express API, local AI authenticity scoring, SHA-256 hashing, optional visible image watermarking, IPFS pinning through Pinata, and an on-chain Solidity registry.
 
 ## What It Does
 
 - Registers images, video, audio, PDFs, documents, spreadsheets, presentations, CSV, and text files.
+- Runs local AI authenticity analysis that produces a confidence score, verdict, model name, and findings for each uploaded file.
 - Calculates a SHA-256 fingerprint for the original file.
 - Applies a visible watermark and perceptual hash for image files when supported.
 - Pins registered content to IPFS through Pinata.
@@ -20,6 +21,7 @@ AI-based-content-Authenticity-and-Verification-Platform is a full-stack system f
 | Backend | Node.js, Express, Multer |
 | Blockchain | Solidity, Hardhat 3, Ethers.js |
 | Storage | Pinata IPFS |
+| AI Analysis | Local image/file signal analysis |
 | Hashing | Node.js crypto, Jimp |
 | Hosting | Render for backend, Vercel for frontend |
 | Network | Sepolia testnet for online deployment |
@@ -309,4 +311,5 @@ npx hardhat run scripts/deploy.js --network sepolia
 - Use a test wallet for Sepolia. Do not use a wallet that holds real funds.
 - Pinata credentials are required for upload/register.
 - Verification can read from the blockchain contract as long as RPC and contract address are valid.
+- The AI layer is local and dependency-light. It analyzes image/file signals and returns an authenticity confidence score that complements, but does not replace, blockchain verification.
 - Local Hardhat contract addresses do not work online. Render must use a Sepolia or other public-network contract address.

@@ -29,9 +29,9 @@ contract GenesisRegistry {
 
     /**
      * @notice Registers a new piece of content on the blockchain.
-     * @param _sha256Hash The SHA-256 hash of the watermarked file.
-     * @param _pHash The perceptual hash of the watermarked file.
-     * @param _ipfsCid The IPFS CID where the watermarked file is stored.
+     * @param _sha256Hash The SHA-256 hash of the original file.
+     * @param _pHash The perceptual hash of the processed image, or not_applicable for non-images.
+     * @param _ipfsCid The IPFS CID where the registered file is stored.
      */
     function createRecord(
         string memory _sha256Hash,
